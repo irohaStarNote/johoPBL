@@ -15,7 +15,7 @@ public class ExpenseModel {
         // 初期行を 3 つ用意
         items.add(new ExpenseItem("家賃", 0, true));
         items.add(new ExpenseItem("食費", 0, true));
-        items.add(new ExpenseItem("光熱費", 0, true));
+        items.add(new ExpenseItem("光熱費", 0, false));
     }
 
     // 新規行を追加
