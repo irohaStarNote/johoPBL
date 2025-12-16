@@ -36,13 +36,13 @@ public class ExpenseModel {
 
     // 所得税を追加
     public int addShotoku(int gesshuu) {
-        int nennshuu=gesshuu*16;
-        int shotokuzei=0;
+        int nennshuu = gesshuu*16;
+        int shotokuzei = 0;
         if(nennshuu<3300000){
-            shotokuzei+=(nennshuu*0.1-97500)/12;
+            shotokuzei += (nennshuu*0.1-97500)/12;
         }
         else{
-            shotokuzei+=(nennshuu*0.2-427500)/12;
+            shotokuzei += (nennshuu*0.2-427500)/12;
         }
         return shotokuzei;   
     }
