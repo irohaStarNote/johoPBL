@@ -11,11 +11,7 @@ import model.ExpenseModel;
 /* 入力画面(チェックボックス付き) */
 public class InputView extends JFrame {
     private ExpenseModel model;
-    private AppController ctrl;
 
-    private final Font uiFont = new Font("SansSerif", Font.PLAIN, 18);
-    private final Font uiFontBold = new Font("SansSerif", Font.BOLD, 18);
-    
     // 入力行を扱う内部クラス(1 行 = チェック + テキスト + 入力欄)
     private class Row {
         JCheckBox check;
@@ -36,11 +32,10 @@ public class InputView extends JFrame {
     private JLabel totalLabel;
 
     public InputView(AppController ctrl, ExpenseModel model) {
-        this.ctrl = ctrl;
         this.model = model;
 
         setTitle("生活費入力");
-        setSize(500, 400);
+        setSize(500, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -129,9 +124,6 @@ public class InputView extends JFrame {
                 else if ("短大・専門学校卒".equals(selected)) newAmount = model.addShotoku(223000);
                 else if ("大卒".equals(selected)) newAmount = model.addShotoku(239700);
                 else if ("大学院卒".equals(selected)) newAmount = model.addShotoku(285100);
-                
-
-            } else if (item.zei.equals("自動車税")) { // 車選択の場合
 
             } else if (item.zei.equals("自動車税")) {
                 if ("自動車なし".equals(selected)) newAmount = 0;
