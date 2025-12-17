@@ -14,16 +14,16 @@ public class ExpenseModel {
         items = new ArrayList<>();
         items2=  new ArrayList<>();
         // 初期行を3つ用意
-        items.add(new ExpenseItem("食費", 0, false));
-        items.add(new ExpenseItem("光熱費", 0, false));
-        items.add(new ExpenseItem("家賃",40000 , false));
-        items.add(new ExpenseItem("社会保険", 40938, false)); 
-        items.add(new ExpenseItem("公的年金", 24888, false));
-        items.add(new ExpenseItem("健康保険", 13158, false));
-        items.add(new ExpenseItem("介護保険", 1509, false)); 
-        items.add(new ExpenseItem("火災保険",5199 , false)); 
+        items.add(new ExpenseItem("食費", 0, true));
+        items.add(new ExpenseItem("光熱費", 0, true));
+        items.add(new ExpenseItem("家賃",40000 , true));
+        items.add(new ExpenseItem("社会保険", 40938, true));
+        items.add(new ExpenseItem("公的年金", 24888, true));
+        items.add(new ExpenseItem("健康保険", 13158, true));
+        items.add(new ExpenseItem("介護保険", 1509, true));
+        items.add(new ExpenseItem("火災保険",5199 , true));
         items.add(new ExpenseItem("自動車損害賠償責任保険", 832, false));
-        items.add(new ExpenseItem("任意自動車保険", 11615, false)); 
+        items.add(new ExpenseItem("任意自動車保険", 11615, false));
         items2.add(new ExpenseCombo("所得税",new String[]{"未選択","高卒","短大・専門学校卒","大卒","大学院卒"}, 0, false));
         items2.add(new ExpenseCombo("自動車税",new String[]{"自動車なし","軽自動車","普通車"}, 0, false));
         
