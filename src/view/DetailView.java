@@ -16,7 +16,7 @@ public class DetailView extends JFrame {
         this.model = model;
 
         setTitle("詳細内訳");
-        setSize(400, 300);
+        setSize(800, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -71,6 +71,9 @@ public class DetailView extends JFrame {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+            Font legendFont = new Font("SansSerif", Font.PLAIN, 20); // フォントサイズ設定
+            g2.setFont(legendFont);
+
             // checked == true の項目のみ使用
             java.util.List<model.ExpenseItem> selected = items.stream().filter(e -> e.checked).toList();
 
@@ -82,7 +85,7 @@ public class DetailView extends JFrame {
             int n = Math.min(10, selected.size());
             int total = selected.stream().mapToInt(e -> e.amount).sum();
 
-            int diameter = 180;
+            int diameter = 300; // 円グラフの直系
             int x = 20;
             int y = 20;
             int startAngle = 0;

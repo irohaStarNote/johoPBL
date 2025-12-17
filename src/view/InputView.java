@@ -12,6 +12,9 @@ import model.ExpenseModel;
 public class InputView extends JFrame {
     private ExpenseModel model;
     private AppController ctrl;
+
+    private final Font uiFont = new Font("SansSerif", Font.PLAIN, 18);
+    private final Font uiFontBold = new Font("SansSerif", Font.BOLD, 18);
     
     // 入力行を扱う内部クラス(1 行 = チェック + テキスト + 入力欄)
     private class Row {
@@ -78,6 +81,7 @@ public class InputView extends JFrame {
     private void addRowUI(JPanel parent, ExpenseItem item) {
         Row row = new Row();
         row.check = new JCheckBox();
+        row.check.setSelected(item.checked);
         row.nameField = new JLabel(item.name, 10);
         row.amountField = new JTextField(String.valueOf(item.amount), 7);
         JPanel line = new JPanel();
@@ -91,6 +95,7 @@ public class InputView extends JFrame {
     private void addRowComboUI(JPanel parent,ExpenseCombo item){
         RowCombo row = new RowCombo();
         row.check = new JCheckBox();
+        row.check.setSelected(item.checked);
         row.name =new JLabel(item.zei,10);
         row.list = new JComboBox<>(item.name);
         row.amountField = new JTextField(String.valueOf(item.amount), 7);
