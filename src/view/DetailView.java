@@ -1,12 +1,12 @@
 package view;
 
-import javax.swing.*;
+import controller.AppController;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
-import model.ExpenseModel;
+import javax.swing.*;
 import model.ExpenseItem;
-import controller.AppController;
+import model.ExpenseModel;
 
 /*
  * 詳細画面：
@@ -84,12 +84,13 @@ public class DetailView extends JFrame {
         java.util.List<ExpenseItem> list = model.getItems();
         int count = (int) list.stream().filter(e -> e.checked).count();
 
-        String[][] data = new String[count + 1][3];
-        String[] columns = {"チェック項目", "今回支出", cityName + "の相場"};
+        String[][] data = new String[count + 1][4];
+        String[] columns = {"チェック項目", "今回支出", cityName + "の相場","差額"};
 
         int idx = 0;
         int totalUser = 0;
         int totalCity = 0;
+        int totalSagaku = 0;
 
         for (ExpenseItem e : list) {
             if (!e.checked) continue;
@@ -104,9 +105,12 @@ public class DetailView extends JFrame {
             data[idx][0] = itemName;
             data[idx][1] = String.valueOf(e.amount);
             data[idx][2] = String.valueOf(cityValue);
+            data[idx][3] = String.valueOf(e.amount-cityValue);
 
             totalUser += e.amount;
             totalCity += cityValue;
+            totalSagaku += e.amount;
+            totalSagaku -= cityValue;
             idx++;
         }
 
@@ -114,6 +118,7 @@ public class DetailView extends JFrame {
         data[idx][0] = "合計";
         data[idx][1] = String.valueOf(totalUser);
         data[idx][2] = String.valueOf(totalCity);
+        data[idx][3] = String.valueOf(totalSagaku);
 
         JTable table = new JTable(data, columns);
         table.setRowHeight(24);
