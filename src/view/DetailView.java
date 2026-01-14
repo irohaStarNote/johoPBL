@@ -1,12 +1,12 @@
 package view;
 
-import javax.swing.*;
+import controller.AppController;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
-import model.ExpenseModel;
+import javax.swing.*;
 import model.ExpenseItem;
-import controller.AppController;
+import model.ExpenseModel;
 
 /*
  * 詳細画面：
@@ -22,9 +22,7 @@ public class DetailView extends JFrame {
     private ExpenseModel model;
     private JScrollPane scrollPane;
 
-    // =====================================================
     // 都市名 → CSVファイル
-    // =====================================================
     private static final Map<String, String> CITY_FILES = Map.of(
             "東京", "Tokyo.csv",
             "大阪", "Osaka.csv",
@@ -96,11 +94,13 @@ public class DetailView extends JFrame {
         try (BufferedReader br = new BufferedReader(
                 new InputStreamReader(new FileInputStream(csvPath), "UTF-8"))) {
 
+            // ヘッダ
             String headerLine = br.readLine();
             if (headerLine == null) return map;
             headerLine = headerLine.replace("\uFEFF", "");
             String[] headers = headerLine.split(",");
 
+            // 値（1行目のみ想定）
             String valueLine = br.readLine();
             if (valueLine == null) return map;
             String[] values = valueLine.split(",");
@@ -109,7 +109,9 @@ public class DetailView extends JFrame {
                 String key = headers[i].trim();
                 String raw = values[i].trim();
 
-                int val = 0;
+                int val = 0; // デフォルト 0
+
+                // 完全に数値のときだけ parse
                 if (raw.matches("-?\\d+")) {
                     try {
                         val = Integer.parseInt(raw);
@@ -117,6 +119,7 @@ public class DetailView extends JFrame {
                         val = 0;
                     }
                 }
+
                 map.put(key, val);
             }
 
@@ -128,7 +131,7 @@ public class DetailView extends JFrame {
     }
 
     // =====================================================
-    // 表作成
+    // 表作成（一致しない項目は 0）
     // =====================================================
     private JTable createTable(String cityName) {
         String csv = CITY_FILES.get(cityName);
@@ -137,31 +140,41 @@ public class DetailView extends JFrame {
         java.util.List<ExpenseItem> list = model.getItems();
         int count = (int) list.stream().filter(e -> e.checked).count();
 
-        String[][] data = new String[count + 1][3];
-        String[] columns = {"チェック項目", "今回支出", cityName + "の相場"};
+        String[][] data = new String[count + 1][4];
+        String[] columns = {"チェック項目", "今回支出", cityName + "の相場","差額"};
 
         int idx = 0;
         int totalUser = 0;
         int totalCity = 0;
+        int totalSagaku = 0;
 
         for (ExpenseItem e : list) {
             if (!e.checked) continue;
 
             String itemName = e.name.trim();
-            int cityValue = cityData.getOrDefault(itemName, 0);
+
+            // 一致しない場合は 0
+            int cityValue = cityData.containsKey(itemName)
+                    ? cityData.get(itemName)
+                    : 0;
 
             data[idx][0] = itemName;
             data[idx][1] = String.valueOf(e.amount);
             data[idx][2] = String.valueOf(cityValue);
+            data[idx][3] = String.valueOf(e.amount-cityValue);
 
             totalUser += e.amount;
             totalCity += cityValue;
+            totalSagaku += e.amount;
+            totalSagaku -= cityValue;
             idx++;
         }
 
+        // 合計行
         data[idx][0] = "合計";
         data[idx][1] = String.valueOf(totalUser);
         data[idx][2] = String.valueOf(totalCity);
+        data[idx][3] = String.valueOf(totalSagaku);
 
         JTable table = new JTable(data, columns);
         table.setRowHeight(24);
@@ -175,13 +188,12 @@ public class DetailView extends JFrame {
         this.model = model;
 
         setTitle("詳細内訳（都市比較）");
-        setSize(1000, 550);
+        setSize(1000, 500);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
 
         // -----------------------------
-        // 上部：都市選択
+        // 都市選択
         // -----------------------------
         JComboBox<String> cityCombo =
                 new JComboBox<>(CITY_FILES.keySet().toArray(new String[0]));
@@ -193,11 +205,14 @@ public class DetailView extends JFrame {
         add(top, BorderLayout.NORTH);
 
         // -----------------------------
-        // 中央：円グラフ + 表
+        // 表
         // -----------------------------
         JTable table = createTable("東京");
         scrollPane = new JScrollPane(table);
 
+        // -----------------------------
+        // 左：円グラフ　右：表
+        // -----------------------------
         JSplitPane split = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 new PieChartPanel(model.getItems()),
@@ -291,6 +306,7 @@ public class DetailView extends JFrame {
             int y = 20;
             int startAngle = 0;
 
+            // 円グラフ
             for (int i = 0; i < n; i++) {
                 ExpenseItem e = selected.get(i);
                 int angle = (int) Math.round((double) e.amount / total * 360);
@@ -300,6 +316,7 @@ public class DetailView extends JFrame {
                 startAngle += angle;
             }
 
+            // 凡例
             int lx = x + diameter + 20;
             int ly = y + 20;
 
