@@ -27,7 +27,7 @@ public class ExpenseModel {
         items.add(new ExpenseItem("任意自動車保険", 11615, false)); 
         items2.add(new ExpenseCombo("所得税",new String[]{"未選択","高卒","専門卒","大卒","大学院卒"}, 0, false));
         items2.add(new ExpenseCombo("自動車税",new String[]{"自動車なし","軽自動車","普通車"}, 0, false));
-        
+        items.add(new ExpenseItem("その他",0 , false));
     }
 
     // 新規行を追加
