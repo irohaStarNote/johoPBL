@@ -93,10 +93,10 @@ public class DetailView extends JFrame {
     // city フォルダ内の *.csv を自動検出（ロジックは元のまま）
     // =====================================================
     private Map<String, String> loadCityFiles() {
-        // 確認
-        System.out.println("cwd=" + System.getProperty("user.dir"));
-        System.out.println("city dir=" + new File("city").getAbsolutePath());
-        System.out.println("exists=" + new File("city").exists());
+        // csv読み込めてるか確認
+//        System.out.println("cwd=" + System.getProperty("user.dir"));
+//        System.out.println("city dir=" + new File("city").getAbsolutePath());
+//        System.out.println("exists=" + new File("city").exists());
 
         Map<String, String> map = new LinkedHashMap<>();
         File folder = new File("city");
