@@ -1,56 +1,136 @@
 package controller;
 
+import java.io.*;
+import javax.swing.JOptionPane;
+
 import model.ExpenseModel;
 import view.TitleView;
+import view.CarSelectView;
 import view.InputView;
 import view.DetailView;
+import view.IncomeView;
 
-/* 画面遷移をまとめて管理するクラス (C: Controller) */
 public class AppController {
 
-    private ExpenseModel model;       // 計算ロジックを保持
+    private ExpenseModel model;
     private TitleView titleView;
+    private IncomeView incomeView;
+    private CarSelectView carSelectView;
     private InputView inputView;
     private DetailView detailView;
 
     public AppController() {
-        model = new ExpenseModel(this);   // モデルにコントローラ参照を渡す
+        model = new ExpenseModel(this);
     }
 
-    // ===== 画面表示メソッド =====
+    private void closeAll() {
+        if (titleView != null) titleView.dispose();
+        if (incomeView != null) incomeView.dispose();   // ★ 追加
+        if (inputView != null) inputView.dispose();
+        if (detailView != null) detailView.dispose();
+
+        titleView = null;
+        incomeView = null;
+        inputView = null;
+        detailView = null;
+    }
+
+
     public void showTitle() {
+        closeAll();
         titleView = new TitleView(this);
         titleView.setVisible(true);
     }
 
     public void showInput() {
-        titleView.dispose();              // Window を閉じる
-        inputView = new InputView(this, model);
-        inputView.setVisible(true);
-    }
-    public void reset() {
-        inputView.dispose();              // Window を閉じる
+        closeAll();
         inputView = new InputView(this, model);
         inputView.setVisible(true);
     }
 
+    public void loadPreviousData() {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream("lastdata.dat"))) {
+            model = (ExpenseModel) in.readObject();
+            showInput();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "前回データが見つかりません", "エラー", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void saveData() {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("lastdata.dat"))) {
+            out.writeObject(model);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void reset() {
+        saveData();
+        model = new ExpenseModel(this);
+        showInput();
+    }
+
+    public void showIncome() {
+        closeAll();
+        if (incomeView == null) {
+            incomeView = new IncomeView(this, model);
+        }
+        incomeView.setVisible(true);
+    }
+
+    // 収入入力画面から自動車選択へ
+    public void showCarSelect() {
+        if (titleView != null) titleView.dispose();
+        carSelectView = new CarSelectView(this);
+        carSelectView.setVisible(true);
+    }
+
     public void showDetail() {
-        inputView.dispose();
+        inputView.updateTotal();
+        saveData();
+        closeAll();
         detailView = new DetailView(this, model);
         detailView.setVisible(true);
     }
 
-    // ==== クリックイベントから呼ばれるメソッド ====
+    public void backToInputView() {
+        closeAll();
+        inputView = new InputView(this, model);
+        inputView.setVisible(true);
+    }
+
+    public void backToTitleView() {
+        closeAll();
+        showTitle();
+    }
+
+    public void backToIncomeView() {
+        closeAll();
+        if (incomeView == null) {
+            incomeView = new IncomeView(this, model);
+        }
+        incomeView.setVisible(true);
+    }
+
+
     public void onAddItem() {
-        inputView.addItemRow();           // 入力行を 1 行増やす
+        inputView.addItemRow();
     }
 
     public void onCalculate() {
-        model.calculateTotal();           // 合計を計算
-        inputView.updateTotal();          // 画面に反映
+        inputView.updateTotal();
+        saveData();
     }
 
     public void onShowDetail() {
-        showDetail();                     // 詳細画面へ
+        showDetail();
+    }
+
+    // 自動車税が決定した時の処理
+    public void onCarSelected(int taxAmount) {
+        model.setCarTax(taxAmount); // モデルに保存
+        carSelectView.dispose();
+        showInput(); // 入力画面へ
     }
 }

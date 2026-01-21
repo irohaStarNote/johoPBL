@@ -4,16 +4,26 @@ import controller.AppController;
 import java.awt.*;
 import java.util.ArrayList;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import model.ExpenseCombo;
 import model.ExpenseItem;
 import model.ExpenseModel;
 
-/* 入力画面(チェックボックス付き) */
+/* * デザインとロジックを統合した入力画面
+ */
 public class InputView extends JFrame {
+
     private ExpenseModel model;
     private AppController ctrl;
-    
-    // 入力行を扱う内部クラス(1 行 = チェック + テキスト + 入力欄)
+
+    // デザイン用カラーパレット
+    private final Color COLOR_PRIMARY = new Color(52, 152, 219);  // ブルー
+    private final Color COLOR_DARK = new Color(44, 62, 80);     // 濃紺
+    private final Color COLOR_SUCCESS = new Color(46, 204, 113);  // 緑（残額用）
+    private final Color COLOR_BG = new Color(245, 246, 250);     // 薄いグレーの背景
+
     private class Row {
         JCheckBox check;
         JLabel nameField;
@@ -27,72 +37,142 @@ public class InputView extends JFrame {
         JTextField amountField;
     }
 
-    private ArrayList<Row> rows;     // テキスト版
-    private ArrayList<RowCombo> rows2; // コンボ版
-    
+    private ArrayList<Row> rows;
+    private ArrayList<RowCombo> rows2;
+
     private JLabel totalLabel;
-    
+    private JLabel incomeLabel;
+    private JLabel remainLabel;
+    private JPanel mainPanel; // 行を追加するためにフィールドに保持
+
     public InputView(AppController ctrl, ExpenseModel model) {
         this.ctrl = ctrl;
         this.model = model;
 
-        setTitle("生活費入力");
-        setSize(600, 450);
+        setTitle("生活費シミュレーション - 入力");
+        setSize(950, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        
+        getContentPane().setBackground(COLOR_BG);
+
         rows = new ArrayList<>();
         rows2 = new ArrayList<>();
-    
-        // ===== メインパネル =====
-        JPanel mainPanel = new JPanel();
+
+        // ===== メインコンテンツエリア（スクロール内） =====
+        mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-    
-        // 既存モデル項目を表示
+        mainPanel.setBackground(Color.WHITE);
+        mainPanel.setBorder(new EmptyBorder(20, 50, 20, 50));
+
+        // モデルの項目を反映
         for (ExpenseItem item : model.getItems()) {
             addRowUI(mainPanel, item);
         }
-
-        // コンボ項目
         for (ExpenseCombo item : model.getItems2()) {
             addRowComboUI(mainPanel, item);
         }
 
-        // ===  ボタン類 ===
-        JButton addBtn = new JButton("新規項目を追加");
-        addBtn.addActionListener(e -> ctrl.onAddItem());
-
-        JButton calcBtn = new JButton("計算");
-        calcBtn.addActionListener(e -> ctrl.onCalculate());
-
-        JButton detailBtn = new JButton("詳細を表示する");
-        detailBtn.addActionListener(e -> ctrl.onShowDetail());
-
-        totalLabel = new JLabel("計算結果: ￥0");
-
-        // ===== 下部パネル =====
-        JPanel bottom = new JPanel();
-        bottom.add(addBtn);
-        bottom.add(calcBtn);
-        bottom.add(detailBtn);
-        bottom.add(totalLabel);
-
-        // ===== スクロール対応 =====
         JScrollPane scroll = new JScrollPane(mainPanel);
+        scroll.setBorder(null); // 枠線を消してフラットに
+        scroll.getVerticalScrollBar().setUnitIncrement(16); // スクロールを滑らかに
 
+        // ===== 下部ステータス・ボタンエリア =====
+        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel.setBackground(COLOR_DARK);
+        footerPanel.setBorder(new EmptyBorder(15, 25, 15, 25));
+
+        // 左：操作ボタン
+        JPanel actionBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        actionBtns.setOpaque(false);
+        
+        JButton addBtn = createStyledButton("＋ 項目を追加", Color.WHITE, COLOR_DARK);
+        JButton detailBtn = createStyledButton("詳細・分析グラフを表示", COLOR_PRIMARY, Color.WHITE);
+        
+        addBtn.addActionListener(e -> ctrl.onAddItem());
+        detailBtn.addActionListener(e -> ctrl.onShowDetail());
+        
+        actionBtns.add(addBtn);
+        actionBtns.add(detailBtn);
+
+        // 中央右：金額情報
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 30, 0));
+        infoPanel.setOpaque(false);
+
+        incomeLabel = createStatusLabel("月収: ￥0");
+        totalLabel = createStatusLabel("支出合計: ￥0");
+        remainLabel = createStatusLabel("残額: ￥0");
+        remainLabel.setForeground(COLOR_SUCCESS);
+
+        infoPanel.add(incomeLabel);
+        infoPanel.add(totalLabel);
+        infoPanel.add(remainLabel);
+
+        footerPanel.add(actionBtns, BorderLayout.WEST);
+        footerPanel.add(infoPanel, BorderLayout.EAST);
+
+        // ===== 上部：ナビゲーションバー =====
+        JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
+        navBar.setBackground(Color.WHITE);
+        
+        JButton backTitleBtn = new JButton("◀ タイトルへ");
+        JButton backIncomeBtn = new JButton("◀ 収入入力へ");
+        styleNavButton(backTitleBtn);
+        styleNavButton(backIncomeBtn);
+
+        backTitleBtn.addActionListener(e -> ctrl.backToTitleView());
+        backIncomeBtn.addActionListener(e -> ctrl.backToIncomeView());
+
+        navBar.add(backTitleBtn);
+        navBar.add(backIncomeBtn);
+
+        // 全体のレイアウト設定
+        setLayout(new BorderLayout());
+        add(navBar, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
-        add(bottom, BorderLayout.SOUTH);
+        add(footerPanel, BorderLayout.SOUTH);
+
+        updateTotal();
     }
-    
-    /* モデルから 1 行分の UI を生成しメインパネルへ追加 */
+
+    /* テキスト項目の UI 行追加 */
     private void addRowUI(JPanel parent, ExpenseItem item) {
         Row row = new Row();
+        JPanel line = createRowContainer();
 
         row.check = new JCheckBox();
-        row.nameField = new JLabel(item.name, 10);
-        row.amountField = new JTextField(String.valueOf(item.amount), 7);
+        row.check.setSelected(item.isChecked());
+        row.check.setOpaque(false);
 
-        JPanel line = new JPanel();
+        row.nameField = new JLabel(item.getName());
+        row.nameField.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        row.nameField.setPreferredSize(new Dimension(150, 30));
+
+        row.amountField = new JTextField(String.valueOf(item.getAmount()), 10);
+        styleTextField(row.amountField);
+
+        // ロジック（チェック・入力変更）
+        row.check.addActionListener(e -> {
+            item.setChecked(row.check.isSelected());
+            updateTotal();
+            ctrl.saveData();
+        });
+
+        row.amountField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { rt(); }
+            public void removeUpdate(DocumentEvent e) { rt(); }
+            public void changedUpdate(DocumentEvent e) { rt(); }
+            private void rt() {
+                try {
+                    item.setAmount(Integer.parseInt(row.amountField.getText()));
+                } catch (NumberFormatException ex) {
+                    item.setAmount(0);
+                }
+                item.setChecked(row.check.isSelected());
+                updateTotal();
+                ctrl.saveData();
+            }
+        });
+
         line.add(row.check);
         line.add(row.nameField);
         line.add(new JLabel("￥"));
@@ -102,40 +182,43 @@ public class InputView extends JFrame {
         rows.add(row);
     }
 
-    /* コンボ用項目の UI 作成 */
+    /* コンボ項目の UI 行追加 */
     private void addRowComboUI(JPanel parent, ExpenseCombo item) {
         RowCombo row = new RowCombo();
+        JPanel line = createRowContainer();
 
         row.check = new JCheckBox();
-        row.name = new JLabel(item.zei, 10);
-        row.list = new JComboBox<>(item.name);
-        row.amountField = new JTextField(String.valueOf(item.amount), 7);
+        row.check.setSelected(item.isChecked());
+        row.check.setOpaque(false);
 
-        // ★ 安全なイベントリスナー（警告なし）
-        JComboBox<String> combo = row.list;
+        row.name = new JLabel(item.getZei());
+        row.name.setFont(new Font("SansSerif", Font.BOLD, 14));
+        row.name.setPreferredSize(new Dimension(100, 30));
 
-        combo.addActionListener(e -> {
-            String selected = (String) combo.getSelectedItem();
-            int newAmount = 0;
+        row.list = new JComboBox<>(item.getName());
+        row.amountField = new JTextField(String.valueOf(item.getAmount()), 10);
+        styleTextField(row.amountField);
 
-            if (item.zei.equals("所得税")) {
-                if ("未選択".equals(selected)) newAmount = 0;
-                else if ("高卒".equals(selected)) newAmount = model.addShotoku(191500);
-                else if ("短大・専門学校卒".equals(selected)) newAmount = model.addShotoku(223000);
-                else if ("大卒".equals(selected)) newAmount = model.addShotoku(239700);
-                else if ("大学院卒".equals(selected)) newAmount = model.addShotoku(285100);
-
-            } else if (item.zei.equals("自動車税")) {
-                if ("自動車なし".equals(selected)) newAmount = 0;
-                else if ("軽自動車".equals(selected)) newAmount = 10800;
-                else if ("普通車".equals(selected)) newAmount = 29500;
-            }
-
-            row.amountField.setText(String.valueOf(newAmount));
-            item.amount = newAmount;
+        row.check.addActionListener(e -> {
+            item.setChecked(row.check.isSelected());
+            updateTotal();
+            ctrl.saveData();
         });
 
-        JPanel line = new JPanel();
+        row.list.addActionListener(e -> {
+            String selected = (String) row.list.getSelectedItem();
+            int newAmount = 0;
+            if (item.getZei().equals("自動車税")) {
+                if ("自動車なし".equals(selected)) newAmount = 0;
+                else if ("軽自動車".equals(selected)) newAmount = 900; // 元データに合わせる
+                else if ("普通車".equals(selected)) newAmount = 2500;
+            }
+            row.amountField.setText(String.valueOf(newAmount));
+            item.setAmount(newAmount);
+            updateTotal();
+            ctrl.saveData();
+        });
+
         line.add(row.check);
         line.add(row.name);
         line.add(row.list);
@@ -145,264 +228,89 @@ public class InputView extends JFrame {
         parent.add(line);
         rows2.add(row);
     }
- 
-    /* コントローラ経由で呼ばれる：行を 1 行追加 */
+
+    // ===== ヘルパーメソッド（デザイン用） =====
+
+    private JPanel createRowContainer() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        panel.setBackground(Color.WHITE);
+        panel.setMaximumSize(new Dimension(1000, 50));
+        panel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(236, 240, 241)));
+        return panel;
+    }
+
+    private void styleTextField(JTextField tf) {
+        tf.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        tf.setMargin(new Insets(2, 5, 2, 5));
+    }
+
+    private void styleNavButton(JButton btn) {
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btn.setForeground(Color.GRAY);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    }
+
+    private JButton createStyledButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setMargin(new Insets(8, 15, 8, 15));
+        return btn;
+    }
+
+    private JLabel createStatusLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("SansSerif", Font.BOLD, 16));
+        l.setForeground(Color.WHITE);
+        return l;
+    }
+
+    // ===== ロジックメソッド（元の機能を維持） =====
+
     public void addItemRow() {
-        // モデル側にも追加
         model.addItem();
-
-        // 画面にも追加
         ExpenseItem last = model.getItems().get(model.getItems().size() - 1);
-        addRowUI((JPanel) ((JScrollPane)getContentPane().getComponent(0)).getViewport().getView(), last);
-
-        // 再描画
+        addRowUI(mainPanel, last);
         revalidate();
         repaint();
     }
 
-    /* 合計を再計算しラベル更新 */
     public void updateTotal() {
-        // ====== ExpenseItem（テキスト欄） ======
-        ArrayList<ExpenseItem> items = model.getItems();
-
+        // ExpenseItemの同期
         for (int i = 0; i < rows.size(); i++) {
             Row r = rows.get(i);
-            ExpenseItem it = items.get(i);
-
-            it.checked = r.check.isSelected();
-            it.name = r.nameField.getText();
-
+            ExpenseItem it = model.getItems().get(i);
+            it.setChecked(r.check.isSelected());
             try {
-                it.amount = Integer.parseInt(r.amountField.getText());
-            } catch (NumberFormatException e) {
-                it.amount = 0;
-            }
+                it.setAmount(Integer.parseInt(r.amountField.getText()));
+            } catch (NumberFormatException e) { it.setAmount(0); }
         }
 
-        // ====== ExpenseCombo（コンボ） ======
-        ArrayList<ExpenseCombo> items2 = model.getItems2();
-
+        // ExpenseComboの同期
         for (int i = 0; i < rows2.size(); i++) {
             RowCombo r = rows2.get(i);
-            ExpenseCombo it = items2.get(i);
-
-            it.checked = r.check.isSelected();
-
+            ExpenseCombo it = model.getItems2().get(i);
+            it.setChecked(r.check.isSelected());
             try {
-                it.amount = Integer.parseInt(r.amountField.getText());
-            } catch (NumberFormatException e) {
-                it.amount = 0;
-            }
+                it.setAmount(Integer.parseInt(r.amountField.getText()));
+            } catch (NumberFormatException e) { it.setAmount(0); }
         }
 
         model.calculateTotal();
-        totalLabel.setText("計算結果: ￥" + model.getTotal());
+
+        // ラベル更新
+        incomeLabel.setText("月収: ￥" + String.format("%,d", model.getIncome()));
+        totalLabel.setText("支出合計: ￥" + String.format("%,d", model.getTotal()));
+        int remain = model.getIncome() - model.getTotal();
+        remainLabel.setText("残額: ￥" + String.format("%,d", remain));
+        
+        // 残額がマイナスなら赤字にする
+        remainLabel.setForeground(remain < 0 ? new Color(231, 76, 60) : COLOR_SUCCESS);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// package view;
-
-// import controller.AppController;
-// import java.awt.*;
-// import java.util.ArrayList;
-// import javax.swing.*;
-// import model.ExpenseCombo;
-// import model.ExpenseItem;
-// import model.ExpenseModel;
-
-// /* 入力画面(チェックボックス付き) */
-// public class InputView extends JFrame {
-//     private ExpenseModel model;
-//     private AppController ctrl;
-    
-//     // 入力行を扱う内部クラス(1 行 = チェック + テキスト + 入力欄)
-//     private class Row {
-//         JCheckBox check;
-//         JLabel nameField;
-//         JTextField amountField;
-//     }
-//     private class RowCombo {
-//         JCheckBox check;
-//         JLabel name;
-//         JComboBox<String> list;
-//         JTextField amountField;
-//     }
-//     private ArrayList<Row> rows; // 画面上の行リスト
-//     private ArrayList<RowCombo> rows2;
-    
-//     private JLabel totalLabel;
-    
-//     public InputView(AppController ctrl, ExpenseModel model) {
-//         this.ctrl = ctrl;
-//         this.model = model;
-//         setTitle("生活費入力");
-//         setSize(500, 400);
-//         setLocationRelativeTo(null);
-//         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        
-//         rows = new ArrayList<>();
-//         rows2= new ArrayList<>();
-    
-//         // ===== メインパネル =====
-//         JPanel mainPanel = new JPanel();
-//         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-    
-//         // 既存モデル項目を表示
-//         for (ExpenseItem item : model.getItems()) {
-//             addRowUI(mainPanel, item);
-//         }
-//         for (ExpenseCombo item : model.getItems2()) {
-//             addRowComboUI(mainPanel, item);
-//         }
-//         // ===  ボタン類 ===
-//         JButton addBtn = new JButton("新規項目を追加");
-//         addBtn.addActionListener(e -> ctrl.onAddItem());
-//         JButton calcBtn = new JButton("計算");
-//         calcBtn.addActionListener(e -> ctrl.onCalculate());
-//         JButton detailBtn = new JButton("詳細を表示する");
-//         detailBtn.addActionListener(e -> ctrl.onShowDetail());
-//         totalLabel = new JLabel("計算結果: ￥0");
-
-//         // ===== 下部パネル =====
-//         JPanel bottom = new JPanel();
-//         bottom.add(addBtn);
-//         bottom.add(calcBtn);
-//         bottom.add(detailBtn);
-//         bottom.add(totalLabel);
-
-//         // ===== スクロール対応 =====
-//         JScrollPane scroll = new JScrollPane(mainPanel);
-//         add(scroll, BorderLayout.CENTER);
-//         add(bottom, BorderLayout.SOUTH);
-//     }
-    
-//     /* モデルから 1 行分の UI を生成しメインパネルへ追加 */
-//     private void addRowUI(JPanel parent, ExpenseItem item) {
-//         Row row = new Row();
-//         row.check = new JCheckBox();
-//         row.nameField = new JLabel(item.name, 10);
-//         row.amountField = new JTextField(String.valueOf(item.amount), 7);
-//         JPanel line = new JPanel();
-//         line.add(row.check);
-//         line.add(row.nameField);
-//         line.add(new JLabel("￥"));
-//         line.add(row.amountField);
-//         parent.add(line);
-//         rows.add(row);
-//     }
-//     private void addRowComboUI(JPanel parent,ExpenseCombo item){
-//         RowCombo row = new RowCombo();
-//         row.check = new JCheckBox();
-//         row.name =new JLabel(item.zei,10);
-//         row.list = new JComboBox<>(item.name);
-//         row.amountField = new JTextField(String.valueOf(item.amount), 7);
-
-// // ComboBox にイベントリスナーを追加
-//         row.list.addActionListener(e -> {
-//             JComboBox<String> cb = (JComboBox<String>)e.getSource();
-//             String selected = (String)cb.getSelectedItem();
-            
-//             int newAmount = 0; // 新しい金額
-            
-//             // 選択された項目名に応じて金額を設定
-//             if (item.zei.equals("所得税")) { // 学歴選択の場合
-//                 if ("未選択".equals(selected)) newAmount = 0;
-//                 else if ("高卒".equals(selected)) newAmount = model.addShotoku(191500);
-//                 else if ("短大・専門学校卒".equals(selected)) newAmount = model.addShotoku(223000);
-//                 else if ("大卒".equals(selected)) newAmount = model.addShotoku(239700);
-//                 else if ("大学院卒".equals(selected)) newAmount = model.addShotoku(285100);
-                
-
-//             } else if (item.zei.equals("自動車税")) { // 車選択の場合
-//                 if ("自動車なし".equals(selected)) newAmount = 0;
-//                 else if ("軽自動車".equals(selected)) newAmount = 10800; // 仮の月額費用
-//                 else if ("普通車".equals(selected)) newAmount = 29500;  // 仮の月額費用
-                
-                
-//             }
-            
-//             // 選択に基づいて TextField の値を更新
-//             row.amountField.setText(String.valueOf(newAmount));
-            
-//             // モデル側にも値を反映させる（calculateTotal() 実行時にまとめて反映させる設計だが、即時反映が必要な場合はここで実行）
-//             item.amount = newAmount;
-//         });
-
-//         JPanel line = new JPanel();
-//         line.add(row.check);
-//         line.add(row.name);
-//         line.add(row.list);
-//         line.add(new JLabel("￥"));
-//         line.add(row.amountField);
-//         parent.add(line);
-//         rows2.add(row);
-
-//     }
- 
-//     /* コントローラ経由で呼ばれる：行を 1 行追加 */
-//     public void addItemRow() {
-//         // モデル側にも追加
-//         model.addItem();
-//         // 画面にも追加
-//         ExpenseItem last = model.getItems().get(model.getItems().size() - 1);
-//         addRowUI((JPanel) ((JScrollPane)getContentPane().getComponent(0)).getViewport().getView(), last);
-//         // 再描画
-//         revalidate();
-//         repaint();
-//     }
-
-        
-//     /* 合計を再計算しラベル更新 */
-//     public void updateTotal() {
-//         // まず UI → モデルへ値を保存
-//         ArrayList<ExpenseItem> items = model.getItems();
-//         for (int i = 0; i < rows.size(); i++) {
-//             Row r = rows.get(i);
-//             ExpenseItem it = items.get(i);
-
-//             it.checked = r.check.isSelected();
-//             it.name = r.nameField.getText();
-
-//             try {
-//             it.amount = Integer.parseInt(r.amountField.getText());
-//             } catch (NumberFormatException e) {
-//             it.amount = 0;  // 数字以外なら 0
-//             }
-//         }
-// //  修正点: ExpenseCombo の値をモデルに反映 
-//         ArrayList<ExpenseCombo> items2 = model.getItems2();
-//         for (int i = 0; i < rows2.size(); i++) {
-//             RowCombo r = rows2.get(i);
-//             ExpenseCombo it = items2.get(i);
-            
-//             it.checked = r.check.isSelected();
-//             // it.zei は JLabel なので更新不要
-//             // it.name (選択肢の配列) は更新不要
-            
-//             try {
-//             it.amount = Integer.parseInt(r.amountField.getText());
-//             } catch (NumberFormatException e) {
-//             it.amount = 0; // 数字以外なら 0
-//             }
-//         }
-//         // モデルで計算 (コントローラ側で呼び出し済だが安全のため)
-//         model.calculateTotal();
-//         totalLabel.setText("計算結果: ￥" + model.getTotal());
-//     }
-// }

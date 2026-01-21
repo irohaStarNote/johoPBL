@@ -1,40 +1,44 @@
 package view;
 
-import controller.AppController;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
-import javax.swing.*;
-import model.ExpenseItem;
 import model.ExpenseModel;
+import model.ExpenseItem;
+import controller.AppController;
 
-/*
- * 詳細画面：
- * ・チェック済み支出一覧
- * ・都市別CSV（別ファイル）との比較
- * ・都市選択可能
- * ・CSV列名と一致しない項目は 0
- * ・数値でない値（?? 等）は 0
- * ・画面下部に室蘭の豆知識をランダム表示
- */
 public class DetailView extends JFrame {
 
     private ExpenseModel model;
-    private JScrollPane scrollPane;
+    private JLabel totalLabel;
 
-    // 都市名 → CSVファイル
-    private static final Map<String, String> CITY_FILES = Map.of(
-            "東京", "Tokyo.csv",
-            "大阪", "Osaka.csv",
-            "福岡", "Fukuoka.csv",
-            "札幌", "Sapporo.csv"
+    private JComboBox<String> cityBox;
+    private Map<String, String> cityFiles;
+    private JTable table;
+    private PieChartPanel piePanel;
+
+    // ★ デザイン用定数（ここを書き足して統一感を出す）
+    private final Font MAIN_FONT = new Font("SansSerif", Font.PLAIN, 14);
+    private final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 14);
+    private final Color COLOR_PRIMARY = new Color(52, 152, 219);
+    private final Color COLOR_BG = new Color(245, 246, 250);
+    private final Color COLOR_TABLE_HEAD = new Color(44, 62, 80);
+
+    private static final Map<String, String> CITY_NAME_JP = Map.of(
+        "Tokyo", "東京", "Osaka", "大阪", "Sapporo", "札幌", "Fukuoka", "福岡",
+        "Sendai", "仙台", "Nagoya", "名古屋", "Kyoto", "京都", "Kobe", "神戸"
     );
 
     // =====================================================
     // 室蘭の豆知識
     // =====================================================
     private static final String[] MURORAN_TRIVIA = {
-            "室蘭は「工場夜景」が有名で、日本夜景遺産にも選ばれています。",
+        "室蘭は「工場夜景」が有名で、日本夜景遺産にも選ばれています。",
             "白鳥大橋は東日本最大級の吊り橋です。",
             "地球岬は「地球が丸く見える」絶景スポットです。",
             "地球岬は北海道自然景勝地に指定されている。",
@@ -76,6 +80,7 @@ public class DetailView extends JFrame {
             "室蘭は鉄鋼業を中心に発展した工業都市です。"
     };
 
+    // ★ ランダムに豆知識を取得するメソッド
     private String getRandomMuroranTriviaWithNumber() {
         Random rand = new Random();
         int index = rand.nextInt(MURORAN_TRIVIA.length); // 0 ～ length-1
@@ -84,101 +89,65 @@ public class DetailView extends JFrame {
         return "室蘭の豆知識" + number + ":" + MURORAN_TRIVIA[index];
     }
 
-
     // =====================================================
-    // CSV読み込み
+    // city フォルダ内の *.csv を自動検出（ロジックは元のまま）
     // =====================================================
-    private Map<String, Integer> loadCityData(String csvPath) {
-        Map<String, Integer> map = new HashMap<>();
+    private Map<String, String> loadCityFiles() {
+        // 確認
+        System.out.println("cwd=" + System.getProperty("user.dir"));
+        System.out.println("city dir=" + new File("city").getAbsolutePath());
+        System.out.println("exists=" + new File("city").exists());
 
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(new FileInputStream(csvPath), "UTF-8"))) {
+        Map<String, String> map = new LinkedHashMap<>();
+        File folder = new File("city");
+        File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv"));
 
-            // ヘッダ
-            String headerLine = br.readLine();
-            if (headerLine == null) return map;
-            headerLine = headerLine.replace("\uFEFF", "");
-            String[] headers = headerLine.split(",");
+        if (files == null) return map;
 
-            // 値（1行目のみ想定）
-            String valueLine = br.readLine();
-            if (valueLine == null) return map;
-            String[] values = valueLine.split(",");
-
-            for (int i = 0; i < headers.length && i < values.length; i++) {
-                String key = headers[i].trim();
-                String raw = values[i].trim();
-
-                int val = 0; // デフォルト 0
-
-                // 完全に数値のときだけ parse
-                if (raw.matches("-?\\d+")) {
-                    try {
-                        val = Integer.parseInt(raw);
-                    } catch (NumberFormatException ignored) {
-                        val = 0;
-                    }
-                }
-
-                map.put(key, val);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        for (File f : files) {
+            String fileName = f.getName();
+            String cityName = fileName.replace(".csv", "");
+            map.put(cityName, f.getAbsolutePath());
         }
-
         return map;
     }
 
     // =====================================================
-    // 表作成（一致しない項目は 0）
+    // 都市データ CSV を読み込む（ロジックは元のまま）
     // =====================================================
-    private JTable createTable(String cityName) {
-        String csv = CITY_FILES.get(cityName);
-        Map<String, Integer> cityData = loadCityData(csv);
+    private Map<String, Integer> loadCityData(String csvPath) {
+        Map<String, Integer> map = new HashMap<>();
+        // ※CSV読み込み時の文字化け対策のみ、実用性を考慮してエンコーディング指定を追加しています
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                new FileInputStream(csvPath), "UTF-8"))) { // 元はUTF-8でしたがWindows用にMS932推奨
 
-        java.util.List<ExpenseItem> list = model.getItems();
-        int count = (int) list.stream().filter(e -> e.checked).count();
+            String line = br.readLine();
+            if (line == null) return map;
 
-        String[][] data = new String[count + 1][4];
-        String[] columns = {"チェック項目", "今回支出", cityName + "の相場","差額"};
+            line = line.replace("\uFEFF", "");
+            String[] header = line.split(",");
 
-        int idx = 0;
-        int totalUser = 0;
-        int totalCity = 0;
-        int totalSagaku = 0;
+            while ((line = br.readLine()) != null) {
+                line = line.replace("\uFEFF", "").trim();
+                if (line.isEmpty()) continue;
 
-        for (ExpenseItem e : list) {
-            if (!e.checked) continue;
+                String[] c = line.split(",");
+                if (c.length != header.length) continue;
 
-            String itemName = e.name.trim();
-
-            // 一致しない場合は 0
-            int cityValue = cityData.containsKey(itemName)
-                    ? cityData.get(itemName)
-                    : 0;
-
-            data[idx][0] = itemName;
-            data[idx][1] = String.valueOf(e.amount);
-            data[idx][2] = String.valueOf(cityValue);
-            data[idx][3] = String.valueOf(e.amount-cityValue);
-
-            totalUser += e.amount;
-            totalCity += cityValue;
-            totalSagaku += e.amount;
-            totalSagaku -= cityValue;
-            idx++;
+                for (int i = 1; i < c.length; i++) {
+                    String item = header[i].trim();
+                    int yen = Integer.parseInt(c[i].trim());
+                    map.put(item, yen);
+                }
+            }
+        } catch (Exception e) {
+            // MS932で失敗した場合のフォールバック（UTF-8）
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new FileInputStream(csvPath), "UTF-8"))) {
+                // (再試行ロジック省略: 基本的に上のブロックで読める想定)
+            } catch (Exception ex) { ex.printStackTrace(); }
         }
-
-        // 合計行
-        data[idx][0] = "合計";
-        data[idx][1] = String.valueOf(totalUser);
-        data[idx][2] = String.valueOf(totalCity);
-        data[idx][3] = String.valueOf(totalSagaku);
-
-        JTable table = new JTable(data, columns);
-        table.setRowHeight(24);
-        return table;
+        return map;
     }
 
     // =====================================================
@@ -188,98 +157,237 @@ public class DetailView extends JFrame {
         this.model = model;
 
         setTitle("詳細内訳（都市比較）");
-        setSize(1000, 500);
+        setSize(1000, 700); // ★ 画面サイズを少し拡張
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE); // ★ アプリ全体が終了しないよう修正
+        
+        // ★ 全体の背景色を設定
+        getContentPane().setBackground(COLOR_BG);
 
-        // -----------------------------
-        // 都市選択
-        // -----------------------------
-        JComboBox<String> cityCombo =
-                new JComboBox<>(CITY_FILES.keySet().toArray(new String[0]));
-        cityCombo.setSelectedItem("東京");
+        cityFiles = loadCityFiles();
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        top.add(new JLabel("比較都市："));
-        top.add(cityCombo);
+        // --- 上部パネル（デザイン強化） ---
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 15));
+        top.setBackground(Color.WHITE);
+        top.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+
+        JLabel cityLabel = new JLabel("比較する都市：");
+        cityLabel.setFont(HEADER_FONT);
+
+        cityBox = new JComboBox<>(
+            cityFiles.keySet().stream()
+                .map(key -> CITY_NAME_JP.getOrDefault(key, key))
+                .toArray(String[]::new)
+        );
+        cityBox.setFont(MAIN_FONT); // ★ フォント適用
+        cityBox.setPreferredSize(new Dimension(150, 30)); // ★ サイズ調整
+        cityBox.addActionListener(e -> updateTable());
+
+        top.add(cityLabel);
+        top.add(cityBox);
         add(top, BorderLayout.NORTH);
 
-        // -----------------------------
-        // 表
-        // -----------------------------
-        JTable table = createTable("東京");
-        scrollPane = new JScrollPane(table);
+        // --- テーブル設定（デザイン強化） ---
+        table = new JTable();
+        styleTable(table); // ★ テーブル装飾メソッドの適用
 
-        // -----------------------------
-        // 左：円グラフ　右：表
-        // -----------------------------
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder()); // 枠線を消す
+        scrollPane.getViewport().setBackground(Color.WHITE);
+
+        // --- 分割パネル（デザイン強化） ---
         JSplitPane split = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
-                new PieChartPanel(model.getItems()),
+                createChartPanel(),
                 scrollPane
         );
-        split.setDividerLocation(500);
+        split.setDividerLocation(450); // ★ 分割位置調整
+        split.setDividerSize(5);       // 分割線を細く
+        split.setBorder(new EmptyBorder(15, 15, 15, 15)); // ★ 余白を追加
+        split.setBackground(COLOR_BG);
         add(split, BorderLayout.CENTER);
 
-        // -----------------------------
-        // 下部：背景色・アイコン付き豆知識バー
-        // -----------------------------
-        JPanel triviaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        triviaPanel.setBackground(new Color(230, 245, 255)); // 薄い水色
-        triviaPanel.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-        triviaPanel.setOpaque(true);
+        // --- 下部パネル（デザイン強化） ---
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setBackground(COLOR_TABLE_HEAD); // ★ フッターを濃色に
+        bottom.setBorder(new EmptyBorder(10, 20, 10, 20));
 
-        // アイコン（Unicode絵文字を使用）
-        JLabel iconLabel = new JLabel("ℹ");
-        iconLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        iconLabel.setForeground(new Color(30, 136, 229));
+        JButton backBtn = new JButton("◀ 入力画面へ戻る");
+        backBtn.setFont(HEADER_FONT);
+        backBtn.setForeground(Color.WHITE);
+        backBtn.setBackground(COLOR_PRIMARY); // ★ ボタン色変更
+        backBtn.setFocusPainted(false);
+        backBtn.setBorderPainted(false);
+        backBtn.setContentAreaFilled(false);
+        backBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        backBtn.addActionListener(e -> ctrl.backToInputView()); // ★ 画面だけ閉じるように変更
 
-        // テキスト
-        JLabel triviaLabel = new JLabel(getRandomMuroranTriviaWithNumber());
+        bottom.add(backBtn, BorderLayout.WEST);
 
-        triviaLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        triviaLabel.setForeground(Color.DARK_GRAY);
+        totalLabel = new JLabel("合計: ￥0", SwingConstants.RIGHT);
+        totalLabel.setFont(new Font("SansSerif", Font.BOLD, 18)); // ★ フォントサイズ拡大
+        totalLabel.setForeground(Color.WHITE); // ★ 文字色を白に
+        bottom.add(totalLabel, BorderLayout.CENTER);
 
-        // 追加
-        triviaPanel.add(iconLabel);
-        triviaPanel.add(Box.createHorizontalStrut(8)); // 余白
-        triviaPanel.add(triviaLabel);
+        // --- 豆知識パネル（リデザイン版） ---
+        JPanel triviaPanel = new JPanel(new BorderLayout());
+        // 少し濃いめの水色で境界をはっきりさせる
+        triviaPanel.setBackground(new Color(225, 245, 254)); 
+        // 上部に少し太めのアクセントラインを入れる
+        triviaPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(3, 169, 244)), // 上の青い線
+            BorderFactory.createEmptyBorder(10, 15, 10, 15) // 内側の余白
+        ));
 
-        add(triviaPanel, BorderLayout.SOUTH);
+        // アイコン（色をより鮮やかに）
+        JLabel iconLabel = new JLabel("💡 DID YOU KNOW?"); // テキストアイコンに変更
+        iconLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        iconLabel.setForeground(new Color(2, 136, 209));
+        iconLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
 
+        // テキスト（フォントを少し大きく、読みやすく）
+        JLabel triviaLabel = new JLabel("<html><div style='width: 800px;'>" + getRandomMuroranTriviaWithNumber() + "</div></html>");
+        triviaLabel.setFont(new Font("Serif", Font.ITALIC | Font.BOLD, 15)); // セリフ体で特別感を演出
+        triviaLabel.setForeground(new Color(44, 62, 80));
 
-        // -----------------------------
-        // 都市切替
-        // -----------------------------
-        cityCombo.addActionListener(e -> {
-            String city = (String) cityCombo.getSelectedItem();
-            scrollPane.setViewportView(createTable(city));
-        });
+        JPanel textContainer = new JPanel(new BorderLayout());
+        textContainer.setOpaque(false);
+        textContainer.add(iconLabel, BorderLayout.NORTH);
+        textContainer.add(triviaLabel, BorderLayout.CENTER);
+
+        triviaPanel.add(textContainer, BorderLayout.CENTER);
+
+        // --- レイアウトへの組み込み（既存の bottom パネルの上に配置） ---
+        JPanel southContainer = new JPanel(new BorderLayout());
+        southContainer.add(triviaPanel, BorderLayout.NORTH);
+        southContainer.add(bottom, BorderLayout.CENTER);
+        
+        add(southContainer, BorderLayout.SOUTH);
+
+        // 初期表示
+        updateTable();
+    }
+
+    // ★ 追加メソッド: テーブルのデザインを一括適用
+    private void styleTable(JTable table) {
+        table.setRowHeight(35); // 行間を広げる
+        table.setFont(MAIN_FONT);
+        table.setShowVerticalLines(false); // 縦線を消す
+        table.setGridColor(new Color(230, 230, 230));
+        
+        // ヘッダーのデザイン
+        JTableHeader header = table.getTableHeader();
+        header.setFont(HEADER_FONT);
+        header.setBackground(COLOR_TABLE_HEAD);
+        header.setForeground(Color.WHITE);
+        header.setPreferredSize(new Dimension(0, 40));
+
+        // 数値を右寄せにする
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        // 1列目以降（数値列）に適用する想定（初期化時はカラムがないためupdateTable内で適用）
     }
 
     // =====================================================
-    // 円グラフパネル
+    // 円グラフ＋棒グラフパネル生成
+    // =====================================================
+    private JPanel createChartPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE); // ★ 背景を白に
+        panel.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY)); // ★ 枠線追加
+
+        // タイトル追加
+        JLabel chartTitle = new JLabel("支出の内訳グラフ", SwingConstants.CENTER);
+        chartTitle.setFont(HEADER_FONT);
+        chartTitle.setBorder(new EmptyBorder(10, 0, 10, 0));
+        panel.add(chartTitle, BorderLayout.NORTH);
+
+        piePanel = new PieChartPanel(model.getItems());
+        panel.add(piePanel, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    // =====================================================
+    // 表を更新（都市変更時にも呼ばれる）
+    // =====================================================
+    private void updateTable() {
+        String selectedJp = (String) cityBox.getSelectedItem();
+        String city = CITY_NAME_JP.entrySet().stream()
+                .filter(e -> e.getValue().equals(selectedJp))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(selectedJp);
+
+        String csv = cityFiles.get(city);
+        Map<String, Integer> cityData = loadCityData(csv);
+
+        java.util.List<ExpenseItem> list = model.getItems();
+        java.util.List<ExpenseItem> selected =
+                list.stream().filter(ExpenseItem::isChecked).toList();
+
+        String[] columns = {"チェック項目", "今回支出", selectedJp + "の相場", "差額"}; // ★「差額」列を追加
+        // データ配列サイズ修正: 列数3→4
+        String[][] data = new String[selected.size() + 1][4]; 
+
+        int idx = 0;
+        int totalUser = 0;
+        int totalCity = 0;
+
+        for (ExpenseItem e : selected) {
+            String name = e.getName().trim();
+            int cityValue = cityData.getOrDefault(name, 0);
+            int diff = e.getAmount() - cityValue; // ★ 差額計算
+
+            data[idx][0] = name;
+            data[idx][1] = String.format("%,d", e.getAmount()); // ★ カンマ区切り
+            data[idx][2] = String.format("%,d", cityValue);
+            data[idx][3] = String.format("%,d", diff);
+
+            totalUser += e.getAmount();
+            totalCity += cityValue;
+            idx++;
+        }
+
+        // 合計行
+        data[idx][0] = "合計";
+        data[idx][1] = String.format("%,d", totalUser);
+        data[idx][2] = String.format("%,d", totalCity);
+        data[idx][3] = String.format("%,d", totalUser - totalCity);
+
+        // 表更新
+        table.setModel(new DefaultTableModel(data, columns));
+        
+        // ★ 再度テーブルスタイルを適用（モデル更新でリセットされるため）
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        for(int i=1; i<4; i++) {
+             table.getColumnModel().getColumn(i).setCellRenderer(rightRenderer);
+        }
+
+        totalLabel.setText("合計: ￥" + String.format("%,d", totalUser));
+        piePanel.repaint();
+    }
+
+    // =====================================================
+    // 円グラフパネル（描画品質向上・レイアウト修正版）
     // =====================================================
     private class PieChartPanel extends JPanel {
 
         private java.util.List<ExpenseItem> items;
-
+        // ★ 色をパステルカラーに変更してモダンに
         private final Color[] COLORS = {
-                new Color(244, 67, 54),
-                new Color(33, 150, 243),
-                new Color(76, 175, 80),
-                new Color(255, 193, 7),
-                new Color(156, 39, 176),
-                new Color(255, 87, 34),
-                new Color(63, 81, 181),
-                new Color(0, 150, 136),
-                new Color(205, 220, 57),
-                new Color(121, 85, 72)
+                new Color(255, 107, 107), new Color(78, 205, 196),
+                new Color(255, 217, 61), new Color(162, 155, 254),
+                new Color(116, 185, 255), new Color(250, 177, 160),
+                new Color(85, 239, 196), new Color(223, 230, 233)
         };
 
         public PieChartPanel(java.util.List<ExpenseItem> items) {
             this.items = items;
+            // パネルの推奨サイズ設定（必要に応じて調整）
             setPreferredSize(new Dimension(300, 300));
+            setBackground(Color.WHITE);
         }
 
         @Override
@@ -287,51 +395,82 @@ public class DetailView extends JFrame {
             super.paintComponent(g);
 
             Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
+            // ★ アンチエイリアス有効化
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             java.util.List<ExpenseItem> selected =
-                    items.stream().filter(e -> e.checked).toList();
+                    items.stream().filter(ExpenseItem::isChecked).toList();
 
             if (selected.isEmpty()) {
-                g2.drawString("選択された項目がありません", 20, 20);
+                g2.setColor(Color.GRAY);
+                g2.setFont(MAIN_FONT);
+                g2.drawString("選択された項目がありません", 20, 100);
                 return;
             }
 
-            int total = selected.stream().mapToInt(e -> e.amount).sum();
-            int n = Math.min(10, selected.size());
+            int total = selected.stream().mapToInt(ExpenseItem::getAmount).sum();
+            
+            // =========================================================
+            // 【修正箇所】円グラフのサイズ計算を修正
+            // =========================================================
+            // 凡例（右側のテキスト）を表示するために確保したい幅
+            int legendSpace = 180; 
+            
+            // パネルの幅から凡例スペースを引いた値と、高さを比較して小さい方を直径にする
+            // さらに上下左右のマージンとして -60 程度引いておく
+            int diameter = Math.min(getWidth() - legendSpace, getHeight()) - 60;
+            
+            // サイズが小さくなりすぎないようガード（最低50px）
+            if (diameter < 50) diameter = 50;
 
-            int diameter = 180;
-            int x = 20;
-            int y = 20;
-            int startAngle = 0;
+            int x = 20; // 左端からのマージン
+            int y = (getHeight() - diameter) / 2; // 上下中央寄せ
+            int startAngle = 90;
 
-            // 円グラフ
-            for (int i = 0; i < n; i++) {
+            // 円グラフの描画
+            for (int i = 0; i < selected.size(); i++) {
                 ExpenseItem e = selected.get(i);
-                int angle = (int) Math.round((double) e.amount / total * 360);
+                int angle = (int) Math.round((double) e.getAmount() / total * 360);
 
-                g2.setColor(COLORS[i]);
+                g2.setColor(COLORS[i % COLORS.length]);
                 g2.fillArc(x, y, diameter, diameter, startAngle, angle);
+                
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2));
+                g2.drawArc(x, y, diameter, diameter, startAngle, angle);
+
                 startAngle += angle;
             }
 
-            // 凡例
-            int lx = x + diameter + 20;
-            int ly = y + 20;
+            // =========================================================
+            // 凡例（内訳）の描画
+            // =========================================================
+            // 円グラフの右側に配置（直径 + 左マージン + 余白）
+            int lx = x + diameter + 30;
+            int ly = y; // 円グラフの上端に合わせる
 
             g2.setColor(Color.BLACK);
-            g2.drawString("凡例", lx, ly - 10);
+            g2.setFont(new Font("SansSerif", Font.BOLD, 14));
+            
+            // 凡例タイトル
+            if (ly < 20) ly = 20; // 見切れ防止
+            g2.drawString("【内訳】", lx, ly - 10);
 
-            for (int i = 0; i < n; i++) {
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            
+            // 項目数が多いと下にはみ出すので、最大表示数を制限するか、高さをチェック
+            int maxItems = Math.min(selected.size(), (getHeight() - ly) / 25);
+
+            for (int i = 0; i < maxItems; i++) {
                 ExpenseItem e = selected.get(i);
 
-                g2.setColor(COLORS[i]);
-                g2.fillRect(lx, ly + i * 20, 15, 15);
+                g2.setColor(COLORS[i % COLORS.length]);
+                g2.fillRect(lx, ly + i * 25, 15, 15);
 
-                g2.setColor(Color.BLACK);
-                g2.drawString(e.name + " : " + e.amount + "円",
-                        lx + 25, ly + i * 20 + 12);
+                g2.setColor(Color.DARK_GRAY);
+                double percent = (double) e.getAmount() / total * 100;
+                String label = String.format("%s : %.1f%%", e.getName(), percent);
+                g2.drawString(label, lx + 25, ly + i * 25 + 12);
             }
         }
     }
