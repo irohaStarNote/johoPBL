@@ -67,12 +67,6 @@ public class AppController {
         }
     }
 
-    public void reset() {
-        saveData();
-        model = new ExpenseModel();
-        showInput();
-    }
-
     public void showIncome() {
         closeAll();
         incomeView = new IncomeView(this, model);
