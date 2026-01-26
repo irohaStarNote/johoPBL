@@ -92,14 +92,9 @@ public class DetailView extends JFrame {
     // =====================================================
     // city フォルダ内の *.csv を自動検出（ロジックは元のまま）
     // =====================================================
-    private Map<String, String> loadCityFiles() {
-        // csv読み込めてるか確認
-//        System.out.println("cwd=" + System.getProperty("user.dir"));
-//        System.out.println("city dir=" + new File("city").getAbsolutePath());
-//        System.out.println("exists=" + new File("city").exists());
-
+    private Map<String, String> loadCityFiles(String folderPath) {
         Map<String, String> map = new LinkedHashMap<>();
-        File folder = new File("city");
+        File folder = new File(folderPath);
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv"));
 
         if (files == null) return map;
@@ -164,7 +159,7 @@ public class DetailView extends JFrame {
         // ★ 全体の背景色を設定
         getContentPane().setBackground(COLOR_BG);
 
-        cityFiles = loadCityFiles();
+        cityFiles = loadCityFiles("city");
 
         // --- 上部パネル（デザイン強化） ---
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 15));
@@ -336,8 +331,24 @@ public class DetailView extends JFrame {
 
         for (ExpenseItem e : selected) {
             String name = e.getName().trim();
-            int cityValue = cityData.getOrDefault(name, 0);
-            int diff = e.getAmount() - cityValue; // ★ 差額計算
+
+            String edu = model.getEducation();  
+            String taxKey = edu + "_所得税";
+            String disp = model.getDisplacement();
+            String automobileTaxKey = disp;
+
+            int cityValue;
+
+            // ★ 所得税だけは学歴別キーで取得
+            if (name.equals("所得税")) {
+                cityValue = cityData.getOrDefault(taxKey, 0);
+            } else if (name.equals("自動車税")) {
+                cityValue = cityData.getOrDefault(automobileTaxKey, 0);
+            } else {
+                cityValue = cityData.getOrDefault(name, 0);
+            }
+        
+            int diff = e.getAmount() - cityValue;
 
             data[idx][0] = name;
             data[idx][1] = String.format("%,d", e.getAmount()); // ★ カンマ区切り

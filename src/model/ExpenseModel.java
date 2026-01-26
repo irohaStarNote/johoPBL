@@ -12,6 +12,9 @@ public class ExpenseModel implements Serializable {
     private int total;      // 支出合計
     private int income;     // 月収
     private int shotoku;    // 所得税（月額）
+    private String education; // 学歴
+    private String displacement; // 排気量
+    private int automobileTax; // 自動車税
 
     public ExpenseModel(controller.AppController ctrl) {
         items = new ArrayList<>();
@@ -28,15 +31,10 @@ public class ExpenseModel implements Serializable {
         items.add(new ExpenseItem("健康保険", 13158, true));
         items.add(new ExpenseItem("介護保険", 1509, true));
         items.add(new ExpenseItem("火災保険", 5199, true));
-        items.add(new ExpenseItem("自動車損害賠償責任保険", 832, false));
-        items.add(new ExpenseItem("任意自動車保険", 11615, false));
+        items.add(new ExpenseItem("自動車損害賠償責任保険", 832, true));
+        items.add(new ExpenseItem("任意自動車保険", 11615, true));
         items.add(new ExpenseItem("所得税", 0, true));
-        items.add(new ExpenseItem("その他",0 , false));
-
-        // コンボ項目
-        // items2.add(new ExpenseCombo("自動車税",
-        //         new String[]{"自動車なし", "軽自動車", "普通車"},
-        //         0, false));
+        items.add(new ExpenseItem("自動車税", 0, true));
 
         calculateTotal();
     }
@@ -46,6 +44,8 @@ public class ExpenseModel implements Serializable {
     // -------------------------
     public void setIncome(int income) {
         this.income = income;
+        calculateShotoku();
+        calculateTotal(); 
     }
 
     public int getIncome() {
@@ -109,17 +109,58 @@ public class ExpenseModel implements Serializable {
         total = sum;
     }
 
+    // -------------------------
     // 自動車税を項目として設定する
-    public void setCarTax(int amount) {
-        // 既存のリストに「自動車税」があれば更新、なければ追加
+    // -------------------------
+    // public void setCarTax(String name, int amount) {
+    //     // 既存のリストに「自動車税」があれば更新、なければ追加
+    //     for (ExpenseItem item : items) {
+    //         if (item.getName().equals("自動車税")) {
+    //             item.setAmount(amount);
+    //             item.setChecked((amount > 0)); // 0円でなければチェックを入れる
+    //             return;
+    //         }
+    //     }
+    //     // 新規追加（初期リストにない場合）
+    //     items.add(new ExpenseItem("自動車税（" + name + "）", amount, amount > 0));
+    // }
+
+    public void reflectedExpensesItem() {
         for (ExpenseItem item : items) {
             if (item.getName().equals("自動車税")) {
-                item.setAmount(amount);
-                item.setChecked((amount > 0)); // 0円でなければチェックを入れる
-                return;
+                item.setAmount(this.automobileTax);
             }
         }
-        // 新規追加（初期リストにない場合）
-        items.add(new ExpenseItem("自動車税", amount, amount > 0));
+    }
+
+    // -------------------------
+    // 所得税に関するゲッター、セッター
+    // -------------------------
+    public void setEducation(String edu) {
+        this.education = edu; 
+    }
+    
+    public String getEducation() { 
+        return education; 
+    }
+    
+    // -------------------------
+    // 自動車税に関するゲッター、セッター
+    // -------------------------
+    public void setDisplacement(String disp) {
+        this.displacement = disp;
+    }
+
+    public String getDisplacement() {
+        return displacement;
+    }
+
+    public void setAutomobileTax(int tax) {
+        this.automobileTax = tax;
+        reflectedExpensesItem();
+    }
+
+    public int getAutomobileTax() {
+        return automobileTax;
     }
 }

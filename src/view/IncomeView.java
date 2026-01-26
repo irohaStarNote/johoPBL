@@ -90,9 +90,12 @@ public class IncomeView extends JFrame {
 
         JButton nextBtn = createStyledButton("次へ（車情報の確認）", COLOR_PRIMARY, Color.WHITE);
         nextBtn.addActionListener(e -> {
-            // 現在の月収をモデルに保存して次へ
             try {
                 int monthly = Integer.parseInt(monthlyField.getText());
+            
+                // ★ 学歴をモデルに保存（これが必須）
+                model.setEducation((String) eduBox.getSelectedItem());
+            
                 model.setIncome(monthly);
                 ctrl.showCarSelect();
             } catch (NumberFormatException ex) {

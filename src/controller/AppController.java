@@ -25,16 +25,17 @@ public class AppController {
 
     private void closeAll() {
         if (titleView != null) titleView.dispose();
-        if (incomeView != null) incomeView.dispose();   // ★ 追加
+        if (incomeView != null) incomeView.dispose();
         if (inputView != null) inputView.dispose();
         if (detailView != null) detailView.dispose();
+        if (carSelectView != null) carSelectView.dispose();
 
         titleView = null;
         incomeView = null;
         inputView = null;
         detailView = null;
+        carSelectView = null;
     }
-
 
     public void showTitle() {
         closeAll();
@@ -45,6 +46,7 @@ public class AppController {
     public void showInput() {
         closeAll();
         inputView = new InputView(this, model);
+        inputView.refreshUIFromModel();   // ★ Model → UI 同期
         inputView.setVisible(true);
     }
 
@@ -73,16 +75,13 @@ public class AppController {
 
     public void showIncome() {
         closeAll();
-        if (incomeView == null) {
-            incomeView = new IncomeView(this, model);
-        }
+        incomeView = new IncomeView(this, model);
         incomeView.setVisible(true);
     }
 
-    // 収入入力画面から自動車選択へ
     public void showCarSelect() {
-        if (titleView != null) titleView.dispose();
-        carSelectView = new CarSelectView(this);
+        closeAll();
+        carSelectView = new CarSelectView(this, model);
         carSelectView.setVisible(true);
     }
 
@@ -97,6 +96,7 @@ public class AppController {
     public void backToInputView() {
         closeAll();
         inputView = new InputView(this, model);
+        inputView.refreshUIFromModel();   // ★ 所得税など最新値を反映
         inputView.setVisible(true);
     }
 
@@ -107,15 +107,8 @@ public class AppController {
 
     public void backToIncomeView() {
         closeAll();
-        if (incomeView == null) {
-            incomeView = new IncomeView(this, model);
-        }
+        incomeView = new IncomeView(this, model);
         incomeView.setVisible(true);
-    }
-
-
-    public void onAddItem() {
-        inputView.addItemRow();
     }
 
     public void onCalculate() {
@@ -127,10 +120,9 @@ public class AppController {
         showDetail();
     }
 
-    // 自動車税が決定した時の処理
-    public void onCarSelected(int taxAmount) {
-        model.setCarTax(taxAmount); // モデルに保存
-        carSelectView.dispose();
-        showInput(); // 入力画面へ
-    }
+    // public void onCarSelected(String name,int taxAmount) {
+    //     model.setCarTax(name, taxAmount);
+    //     if (carSelectView != null) carSelectView.dispose();
+    //     showInput();
+    // }
 }
