@@ -108,9 +108,4 @@ public class AppController {
         showDetail();
     }
 
-    // public void onCarSelected(String name,int taxAmount) {
-    //     model.setCarTax(name, taxAmount);
-    //     if (carSelectView != null) carSelectView.dispose();
-    //     showInput();
-    // }
 }
