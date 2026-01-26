@@ -1,25 +1,24 @@
 package model;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ExpenseModel implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
-    private ArrayList<ExpenseItem> items;
-    private ArrayList<ExpenseCombo> items2;
+    /** 支出項目リスト（チェックされたものだけ合計に入る） */
+    private final ArrayList<ExpenseItem> items = new ArrayList<>();
 
-    private int total;      // 支出合計
-    private int income;     // 月収
-    private int shotoku;    // 所得税（月額）
-    private String education; // 学歴
-    private String displacement; // 排気量
-    private int automobileTax; // 自動車税
+    private int total;              // 支出合計(円/月)
+    private int income;             // 月収
+    private String education;       // 学歴
+    private String displacement;    // 車の排気量区分
+    private int automobileTax;      // 自動車税(円/月)
 
-    public ExpenseModel(controller.AppController ctrl) {
-        items = new ArrayList<>();
-        items2 = new ArrayList<>();
-
+    public ExpenseModel() {
         // -------------------------
         // デフォルト支出項目
         // -------------------------
@@ -36,131 +35,112 @@ public class ExpenseModel implements Serializable {
         items.add(new ExpenseItem("所得税", 0, true));
         items.add(new ExpenseItem("自動車税", 0, true));
 
-        calculateTotal();
+        recalculateAll();
     }
 
-    // -------------------------
-    // 収入（月収）
-    // -------------------------
+    // =========================================================
+    // 入力値（収入）
+    // =========================================================
     public void setIncome(int income) {
-        this.income = income;
-        calculateShotoku();
-        calculateTotal(); 
+        this.income = Math.max(income, 0);
+        recalculateAll();
     }
 
     public int getIncome() {
         return income;
     }
 
-    // -------------------------
-    // 所得税（月額）を計算してセット
-    // -------------------------
-    public void addItem() {
-        items.add(new ExpenseItem("新規項目", 0, false));
-    }
-
-    public void calculateShotoku() {
+    /**
+     * 収入から所得税（月額）を再計算します。
+     * ※本アプリでは簡易的な税率テーブルを使用しています。
+     */
+    private void calculateIncomeTax() {
         int annual = income * 12;
 
         int tax;
-        if (annual <= 1950000) tax = (int)(annual * 0.05);
-        else if (annual <= 3300000) tax = (int)(annual * 0.10 - 97500);
-        else if (annual <= 6950000) tax = (int)(annual * 0.20 - 427500);
-        else if (annual <= 9000000) tax = (int)(annual * 0.23 - 636000);
-        else if (annual <= 18000000) tax = (int)(annual * 0.33 - 1536000);
-        else if (annual <= 40000000) tax = (int)(annual * 0.40 - 2796000);
-        else tax = (int)(annual * 0.45 - 4796000);
+        if (annual <= 1_950_000) tax = (int) (annual * 0.05);
+        else if (annual <= 3_300_000) tax = (int) (annual * 0.10 - 97_500);
+        else if (annual <= 6_950_000) tax = (int) (annual * 0.20 - 427_500);
+        else if (annual <= 9_000_000) tax = (int) (annual * 0.23 - 636_000);
+        else if (annual <= 18_000_000) tax = (int) (annual * 0.33 - 1_536_000);
+        else if (annual <= 40_000_000) tax = (int) (annual * 0.40 - 2_796_000);
+        else tax = (int) (annual * 0.45 - 4_796_000);
 
-        this.shotoku = tax / 12; // 月額に変換
+        // 所得税（円/月）
+        int incomeTax = Math.max(tax / 12, 0);
 
-        // ★ ExpenseCombo の「所得税」にも反映する
-        for (ExpenseItem item : items) {
-            if (item.getName().equals("所得税")) {
-                item.setAmount(this.shotoku);
-            }
-        }
+        // 支出項目「所得税」に反映（1ヶ所で持つ）
+        setAmountByName("所得税", incomeTax);
     }
 
-    public int getShotoku() {
-        return shotoku;
-    }
-
-    // -------------------------
+    // =========================================================
     // 支出項目
-    // -------------------------
-    public ArrayList<ExpenseItem> getItems() { return items; }
-    public ArrayList<ExpenseCombo> getItems2() { return items2; }
-    public int getTotal() { return total; }
+    // =========================================================
 
-    // -------------------------
-    // 支出合計を計算
-    // -------------------------
-    public void calculateTotal() {
+    public List<ExpenseItem> getItems() {
+        return items;
+    }
+
+    /** 自由入力項目を1つ増やす */
+    public void addCustomItem() {
+        items.add(new ExpenseItem("新規項目", 0, false));
+        recalculateTotal();
+    }
+
+    public int getTotal() {
+        return total;
+    }
+
+    /** チェック済みの項目だけを合計 */
+    public void recalculateTotal() {
         int sum = 0;
-
-        for (ExpenseItem item : items)
-            if (item.isChecked()) sum += item.getAmount();
-
-        for (ExpenseCombo item : items2)
-            if (item.isChecked()) sum += item.getAmount();
-
-        sum += shotoku; // ← 所得税を支出に含める
-
+        for (ExpenseItem item : items) {
+            if (item.isChecked()) sum += Math.max(item.getAmount(), 0);
+        }
         total = sum;
     }
 
-    // -------------------------
-    // 自動車税を項目として設定する
-    // -------------------------
-    // public void setCarTax(String name, int amount) {
-    //     // 既存のリストに「自動車税」があれば更新、なければ追加
-    //     for (ExpenseItem item : items) {
-    //         if (item.getName().equals("自動車税")) {
-    //             item.setAmount(amount);
-    //             item.setChecked((amount > 0)); // 0円でなければチェックを入れる
-    //             return;
-    //         }
-    //     }
-    //     // 新規追加（初期リストにない場合）
-    //     items.add(new ExpenseItem("自動車税（" + name + "）", amount, amount > 0));
-    // }
-
-    public void reflectedExpensesItem() {
-        for (ExpenseItem item : items) {
-            if (item.getName().equals("自動車税")) {
-                item.setAmount(this.automobileTax);
-            }
-        }
+    // =========================================================
+    // 学歴・車（都市比較のキーとして利用）
+    // =========================================================
+    public void setEducation(String education) {
+        this.education = education;
     }
 
-    // -------------------------
-    // 所得税に関するゲッター、セッター
-    // -------------------------
-    public void setEducation(String edu) {
-        this.education = edu; 
+    public String getEducation() {
+        return education;
     }
-    
-    public String getEducation() { 
-        return education; 
-    }
-    
-    // -------------------------
-    // 自動車税に関するゲッター、セッター
-    // -------------------------
-    public void setDisplacement(String disp) {
-        this.displacement = disp;
+
+    public void setDisplacement(String displacement) {
+        this.displacement = displacement;
     }
 
     public String getDisplacement() {
         return displacement;
     }
 
-    public void setAutomobileTax(int tax) {
-        this.automobileTax = tax;
-        reflectedExpensesItem();
+    public void setAutomobileTax(int automobileTax) {
+        this.automobileTax = Math.max(automobileTax, 0);
+        setAmountByName("自動車税", this.automobileTax);
+        recalculateTotal();
     }
 
-    public int getAutomobileTax() {
-        return automobileTax;
+    // =========================================================
+    // 再計算
+    // =========================================================
+    /** 収入変更など「派生値」が変わるときはここを呼ぶ */
+    public void recalculateAll() {
+        calculateIncomeTax();
+        setAmountByName("自動車税", automobileTax);
+        recalculateTotal();
+    }
+
+    private void setAmountByName(String name, int amount) {
+        for (ExpenseItem item : items) {
+            if (item.getName().equals(name)) {
+                item.setAmount(amount);
+                return;
+            }
+        }
     }
 }

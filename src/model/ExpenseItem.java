@@ -2,6 +2,12 @@ package model;
 
 import java.io.Serializable;
 
+/**
+ * 支出項目 1つ分のデータ
+ * - name: 項目名（例: 食費）
+ * - amount: 金額（円/月）
+ * - checked: 合計に含めるかどうか
+ */
 public class ExpenseItem implements Serializable {
     private static final long serialVersionUID = 1L;
 

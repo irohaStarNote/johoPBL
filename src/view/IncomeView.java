@@ -11,7 +11,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 
 /**
- * 収入入力画面：デザイン統合版
+ * 収入入力画面
  */
 public class IncomeView extends JFrame {
 
@@ -36,7 +36,7 @@ public class IncomeView extends JFrame {
         setTitle("収入入力 - 生活費シミュレーション");
         setSize(520, 500);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         getContentPane().setBackground(COLOR_BG);
 
         // メインパネル（余白の設定）
@@ -44,13 +44,13 @@ public class IncomeView extends JFrame {
         contentPanel.setOpaque(false);
         contentPanel.setBorder(new EmptyBorder(35, 45, 35, 45));
 
-        // --- ヘッダーエリア ---
+        // --- ヘッダー ---
         JLabel titleLabel = new JLabel("収入情報の入力");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
         titleLabel.setForeground(COLOR_DARK);
         contentPanel.add(titleLabel, BorderLayout.NORTH);
 
-        // --- フォームエリア ---
+        // --- フォーム ---
         JPanel formPanel = new JPanel(new GridLayout(5, 1, 0, 15));
         formPanel.setOpaque(false);
 
@@ -80,7 +80,7 @@ public class IncomeView extends JFrame {
 
         contentPanel.add(formPanel, BorderLayout.CENTER);
 
-        // --- フッターボタンエリア ---
+        // --- フッターボタン ---
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
 
@@ -93,7 +93,7 @@ public class IncomeView extends JFrame {
             try {
                 int monthly = Integer.parseInt(monthlyField.getText());
             
-                // ★ 学歴をモデルに保存（これが必須）
+                // 学歴をモデルに保存
                 model.setEducation((String) eduBox.getSelectedItem());
             
                 model.setIncome(monthly);
@@ -122,8 +122,6 @@ public class IncomeView extends JFrame {
         // 初期表示でプリセットを適用
         applyPreset();
     }
-
-    // --- デザインヘルパーメソッド ---
 
     private JTextField createStyledTextField() {
         JTextField tf = new JTextField();
@@ -163,8 +161,6 @@ public class IncomeView extends JFrame {
         btn.setMargin(new Insets(10, 20, 10, 20));
         return btn;
     }
-
-    // --- ロジックメソッド（元コードを維持） ---
 
     private void applyPreset() {
         String edu = (String) eduBox.getSelectedItem();

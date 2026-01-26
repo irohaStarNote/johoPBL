@@ -20,7 +20,7 @@ public class AppController {
     private DetailView detailView;
 
     public AppController() {
-        model = new ExpenseModel(this);
+        model = new ExpenseModel();
     }
 
     private void closeAll() {
@@ -69,7 +69,7 @@ public class AppController {
 
     public void reset() {
         saveData();
-        model = new ExpenseModel(this);
+        model = new ExpenseModel();
         showInput();
     }
 
@@ -110,12 +110,6 @@ public class AppController {
         incomeView = new IncomeView(this, model);
         incomeView.setVisible(true);
     }
-
-    public void onCalculate() {
-        inputView.updateTotal();
-        saveData();
-    }
-
     public void onShowDetail() {
         showDetail();
     }

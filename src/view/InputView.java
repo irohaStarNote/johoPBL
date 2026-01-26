@@ -8,7 +8,6 @@ import java.awt.*;
 import java.util.ArrayList;
 
 import controller.AppController;
-import model.ExpenseCombo;
 import model.ExpenseItem;
 import model.ExpenseModel;
 
@@ -27,16 +26,7 @@ public class InputView extends JFrame {
         JLabel nameField;
         JTextField amountField;
     }
-
-    private class RowCombo {
-        JCheckBox check;
-        JLabel name;
-        JComboBox<String> list;
-        JTextField amountField;
-    }
-
-    private ArrayList<Row> rows;
-    private ArrayList<RowCombo> rows2;
+private ArrayList<Row> rows;
 
     private JLabel totalLabel;
     private JLabel incomeLabel;
@@ -51,24 +41,17 @@ public class InputView extends JFrame {
         setSize(950, 700);
         setLocationRelativeTo(null);
 
-        // ★ EXIT_ON_CLOSE → DISPOSE_ON_CLOSE
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         getContentPane().setBackground(COLOR_BG);
 
-        rows = new ArrayList<>();
-        rows2 = new ArrayList<>();
-
-        mainPanel = new JPanel();
+        rows = new ArrayList<>();        mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setBorder(new EmptyBorder(20, 50, 20, 50));
 
         for (ExpenseItem item : model.getItems()) {
             addRowUI(mainPanel, item);
-        }
-        for (ExpenseCombo item : model.getItems2()) {
-            addRowComboUI(mainPanel, item);
         }
 
         JScrollPane scroll = new JScrollPane(mainPanel);
@@ -82,13 +65,10 @@ public class InputView extends JFrame {
         JPanel actionBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         actionBtns.setOpaque(false);
 
-        // JButton addBtn = createStyledButton("＋ 項目を追加", Color.WHITE, COLOR_DARK);
         JButton detailBtn = createStyledButton("詳細・分析グラフを表示", COLOR_PRIMARY, Color.WHITE);
 
-        // addBtn.addActionListener(e -> ctrl.onAddItem());
         detailBtn.addActionListener(e -> ctrl.onShowDetail());
 
-        // actionBtns.add(addBtn);
         actionBtns.add(detailBtn);
 
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 30, 0));
@@ -129,7 +109,7 @@ public class InputView extends JFrame {
     }
 
     public void addItemRow() {
-        model.addItem();
+        model.addCustomItem();
         ExpenseItem last = model.getItems().get(model.getItems().size() - 1);
         addRowUI(mainPanel, last);
         mainPanel.revalidate();
@@ -141,14 +121,6 @@ public class InputView extends JFrame {
         for (int i = 0; i < rows.size(); i++) {
             Row r = rows.get(i);
             ExpenseItem it = model.getItems().get(i);
-
-            r.check.setSelected(it.isChecked());
-            r.amountField.setText(String.valueOf(it.getAmount()));
-        }
-
-        for (int i = 0; i < rows2.size(); i++) {
-            RowCombo r = rows2.get(i);
-            ExpenseCombo it = model.getItems2().get(i);
 
             r.check.setSelected(it.isChecked());
             r.amountField.setText(String.valueOf(it.getAmount()));
@@ -201,54 +173,6 @@ public class InputView extends JFrame {
 
         parent.add(line);
         rows.add(row);
-    }
-
-    private void addRowComboUI(JPanel parent, ExpenseCombo item) {
-        RowCombo row = new RowCombo();
-        JPanel line = createRowContainer();
-
-        row.check = new JCheckBox();
-        row.check.setSelected(item.isChecked());
-        row.check.setOpaque(false);
-
-        row.name = new JLabel(item.getZei());
-        row.name.setFont(new Font("SansSerif", Font.BOLD, 14));
-        row.name.setPreferredSize(new Dimension(100, 30));
-
-        row.list = new JComboBox<>(item.getName());
-        row.amountField = new JTextField(String.valueOf(item.getAmount()), 10);
-        styleTextField(row.amountField);
-
-        row.check.addActionListener(e -> {
-            item.setChecked(row.check.isSelected());
-            updateTotal();
-            ctrl.saveData();
-        });
-
-        row.list.addActionListener(e -> {
-            String selected = (String) row.list.getSelectedItem();
-            int newAmount = 0;
-
-            if (item.getZei().equals("自動車税")) {
-                if ("自動車なし".equals(selected)) newAmount = 0;
-                else if ("軽自動車".equals(selected)) newAmount = 900;
-                else if ("普通車".equals(selected)) newAmount = 2500;
-            }
-
-            row.amountField.setText(String.valueOf(newAmount));
-            item.setAmount(newAmount);
-            updateTotal();
-            ctrl.saveData();
-        });
-
-        line.add(row.check);
-        line.add(row.name);
-        line.add(row.list);
-        line.add(new JLabel("￥"));
-        line.add(row.amountField);
-
-        parent.add(line);
-        rows2.add(row);
     }
 
     private JPanel createRowContainer() {
@@ -305,19 +229,7 @@ public class InputView extends JFrame {
             }
         }
 
-        for (int i = 0; i < rows2.size(); i++) {
-            RowCombo r = rows2.get(i);
-            ExpenseCombo it = model.getItems2().get(i);
-
-            it.setChecked(r.check.isSelected());
-            try {
-                it.setAmount(Integer.parseInt(r.amountField.getText()));
-            } catch (NumberFormatException e) {
-                it.setAmount(0);
-            }
-        }
-
-        model.calculateTotal();
+        model.recalculateTotal();
 
         incomeLabel.setText("月収: ￥" + String.format("%,d", model.getIncome()));
         totalLabel.setText("支出合計: ￥" + String.format("%,d", model.getTotal()));

@@ -18,7 +18,7 @@ public class CarSelectView extends JFrame {
         setTitle("自動車の確認");
         setSize(400, 450);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         
         JPanel panel = new JPanel(new BorderLayout(15, 15));
         panel.setBorder(new EmptyBorder(30, 40, 30, 40));
