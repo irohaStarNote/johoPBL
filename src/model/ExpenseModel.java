@@ -81,12 +81,6 @@ public class ExpenseModel implements Serializable {
         return items;
     }
 
-    /** 自由入力項目を1つ増やす */
-    public void addCustomItem() {
-        items.add(new ExpenseItem("新規項目", 0, false));
-        recalculateTotal();
-    }
-
     public int getTotal() {
         return total;
     }
