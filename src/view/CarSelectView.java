@@ -8,13 +8,9 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class CarSelectView extends JFrame {
-    private AppController ctrl;
-    private ExpenseModel model;
 
     public CarSelectView(AppController ctrl, ExpenseModel model) {
-        this.ctrl = ctrl;
-        this.model = model;
-        
+
         setTitle("自動車の確認");
         setSize(400, 450);
         setLocationRelativeTo(null);
@@ -28,16 +24,19 @@ public class CarSelectView extends JFrame {
         msg.setFont(new Font("SansSerif", Font.BOLD, 16));
         panel.add(msg, BorderLayout.NORTH);
 
+        JPanel btnGrid = getjPanel(ctrl, model);
+
+        // スクロールできるようにしておく（ボタン数が多いので安全のため）
+        JScrollPane scrollPane = new JScrollPane(btnGrid);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        add(panel);
+    }
+
+    private static JPanel getjPanel(AppController ctrl, ExpenseModel model) {
         JPanel btnGrid = new JPanel(new GridLayout(0, 1, 0, 12));
         btnGrid.setOpaque(false);
-
-        // String[][] options = {
-        //     {"持っていない", "0"},
-        //     {"軽自動車", "900"},
-        //     {"1.0L以下", "2080"},
-        //     {"1.0L超 1.5L以下", "2540"},
-        //     {"1.5L超 2.0L以下", "3000"}
-        // };
 
         String[][] options = {
             {"持っていない", "0"},
@@ -66,12 +65,6 @@ public class CarSelectView extends JFrame {
             });
             btnGrid.add(btn);
         }
-
-        // スクロールできるようにしておく（ボタン数が多いので安全のため）
-        JScrollPane scrollPane = new JScrollPane(btnGrid);
-        scrollPane.setBorder(null);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        add(panel);
+        return btnGrid;
     }
 }
