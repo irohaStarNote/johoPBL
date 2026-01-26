@@ -1,5 +1,6 @@
 package model;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -9,9 +10,10 @@ import java.io.Serializable;
  * - checked: 合計に含めるかどうか
  */
 public class ExpenseItem implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
-    private String name;
+    private final String name;
     private int amount;
     private boolean checked;
 
@@ -22,7 +24,6 @@ public class ExpenseItem implements Serializable {
     }
 
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
 
     public int getAmount() { return amount; }
     public void setAmount(int amount) { this.amount = amount; }
