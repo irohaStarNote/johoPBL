@@ -13,25 +13,21 @@ import model.ExpenseModel;
 
 public class InputView extends JFrame {
 
-    private ExpenseModel model;
-    private AppController ctrl;
+    private final ExpenseModel model;
+    private final AppController ctrl;
 
-    private final Color COLOR_PRIMARY = new Color(52, 152, 219);
-    private final Color COLOR_DARK = new Color(44, 62, 80);
     private final Color COLOR_SUCCESS = new Color(46, 204, 113);
-    private final Color COLOR_BG = new Color(245, 246, 250);
 
-    private class Row {
+    private static class Row {
         JCheckBox check;
         JLabel nameField;
         JTextField amountField;
     }
-private ArrayList<Row> rows;
+private final ArrayList<Row> rows;
 
-    private JLabel totalLabel;
-    private JLabel incomeLabel;
-    private JLabel remainLabel;
-    private JPanel mainPanel;
+    private final JLabel totalLabel;
+    private final JLabel incomeLabel;
+    private final JLabel remainLabel;
 
     public InputView(AppController ctrl, ExpenseModel model) {
         this.ctrl = ctrl;
@@ -43,9 +39,11 @@ private ArrayList<Row> rows;
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
+        Color COLOR_BG = new Color(245, 246, 250);
         getContentPane().setBackground(COLOR_BG);
 
-        rows = new ArrayList<>();        mainPanel = new JPanel();
+        rows = new ArrayList<>();
+        JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setBorder(new EmptyBorder(20, 50, 20, 50));
@@ -59,13 +57,15 @@ private ArrayList<Row> rows;
         scroll.getVerticalScrollBar().setUnitIncrement(16);
 
         JPanel footerPanel = new JPanel(new BorderLayout());
+        Color COLOR_DARK = new Color(44, 62, 80);
         footerPanel.setBackground(COLOR_DARK);
         footerPanel.setBorder(new EmptyBorder(15, 25, 15, 25));
 
         JPanel actionBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         actionBtns.setOpaque(false);
 
-        JButton detailBtn = createStyledButton("詳細・分析グラフを表示", COLOR_PRIMARY, Color.WHITE);
+        Color COLOR_PRIMARY = new Color(52, 152, 219);
+        JButton detailBtn = createStyledButton(COLOR_PRIMARY);
 
         detailBtn.addActionListener(e -> ctrl.onShowDetail());
 
@@ -106,14 +106,6 @@ private ArrayList<Row> rows;
         add(footerPanel, BorderLayout.SOUTH);
 
         updateTotal();
-    }
-
-    public void addItemRow() {
-        model.addCustomItem();
-        ExpenseItem last = model.getItems().get(model.getItems().size() - 1);
-        addRowUI(mainPanel, last);
-        mainPanel.revalidate();
-        mainPanel.repaint();
     }
 
     public void refreshUIFromModel() {
@@ -197,11 +189,11 @@ private ArrayList<Row> rows;
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
-    private JButton createStyledButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
+    private JButton createStyledButton(Color bg) {
+        JButton btn = new JButton("詳細・分析グラフを表示");
         btn.setFont(new Font("SansSerif", Font.BOLD, 13));
         btn.setBackground(bg);
-        btn.setForeground(fg);
+        btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setMargin(new Insets(8, 15, 8, 15));
