@@ -15,28 +15,20 @@ import java.awt.*;
  */
 public class IncomeView extends JFrame {
 
-    private AppController ctrl;
-    private ExpenseModel model;
-
-    private JComboBox<String> eduBox;   // 最終学歴
-    private JTextField annualField;     // 年収（基本給）
-    private JTextField bonusField;      // ボーナス1回あたり
-    private JTextField bonusCountField; // ボーナス回数
-    private JTextField monthlyField;    // 月収（自動計算）
-
-    // カラーパレット（InputViewと統一）
-    private final Color COLOR_PRIMARY = new Color(52, 152, 219); // ブルー
-    private final Color COLOR_DARK = new Color(44, 62, 80);    // 濃紺
-    private final Color COLOR_BG = new Color(245, 246, 250);    // 背景グレー
+    private final JComboBox<String> eduBox;   // 最終学歴
+    private final JTextField annualField;     // 年収（基本給）
+    private final JTextField bonusField;      // ボーナス1回あたり
+    private final JTextField bonusCountField; // ボーナス回数
+    private final JTextField monthlyField;    // 月収（自動計算）
 
     public IncomeView(AppController ctrl, ExpenseModel model) {
-        this.ctrl = ctrl;
-        this.model = model;
 
         setTitle("収入入力 - 生活費シミュレーション");
         setSize(520, 500);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        // 背景グレー
+        Color COLOR_BG = new Color(245, 246, 250);
         getContentPane().setBackground(COLOR_BG);
 
         // メインパネル（余白の設定）
@@ -47,6 +39,8 @@ public class IncomeView extends JFrame {
         // --- ヘッダー ---
         JLabel titleLabel = new JLabel("収入情報の入力");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        // 濃紺
+        Color COLOR_DARK = new Color(44, 62, 80);
         titleLabel.setForeground(COLOR_DARK);
         contentPanel.add(titleLabel, BorderLayout.NORTH);
 
@@ -69,6 +63,9 @@ public class IncomeView extends JFrame {
         monthlyField.setBackground(new Color(232, 244, 253));
         monthlyField.setForeground(COLOR_DARK);
         monthlyField.setFont(new Font("SansSerif", Font.BOLD, 16));
+        // カラーパレット（InputViewと統一）
+        // ブルー
+        Color COLOR_PRIMARY = new Color(52, 152, 219);
         monthlyField.setBorder(BorderFactory.createLineBorder(COLOR_PRIMARY, 1));
 
         // 各行をフォームに追加
@@ -88,7 +85,7 @@ public class IncomeView extends JFrame {
         styleNavButton(backBtn);
         backBtn.addActionListener(e -> ctrl.backToTitleView());
 
-        JButton nextBtn = createStyledButton("次へ（車情報の確認）", COLOR_PRIMARY, Color.WHITE);
+        JButton nextBtn = createStyledButton(COLOR_PRIMARY);
         nextBtn.addActionListener(e -> {
             try {
                 int monthly = Integer.parseInt(monthlyField.getText());
@@ -151,11 +148,11 @@ public class IncomeView extends JFrame {
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
-    private JButton createStyledButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
+    private JButton createStyledButton(Color bg) {
+        JButton btn = new JButton("次へ（車情報の確認）");
         btn.setFont(new Font("SansSerif", Font.BOLD, 14));
         btn.setBackground(bg);
-        btn.setForeground(fg);
+        btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setMargin(new Insets(10, 20, 10, 20));
